@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Backrooms — three.js r187</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0a06; }
+  body { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: #b9b394; }
+  canvas { display: block; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+
+  #objective {
+    position: absolute; top: 10px; left: 10px;
+    padding: 9px 12px;
+    background: rgba(8, 8, 4, .66);
+    border-left: 2px solid #d6c77a;
+    border-radius: 0 4px 4px 0;
+    font-size: 12px; line-height: 1.6; color: #a79f80;
+  }
+  #objective b { color: #d6c77a; font-weight: 600; }
+  #objective .ready { color: #8fd07a; }
+
+  #action {
+    position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%);
+    padding: 6px 14px;
+    background: rgba(8, 8, 4, .72);
+    border: 1px solid rgba(214, 199, 122, .22);
+    border-radius: 4px;
+    font-size: 12px; color: #d6c77a;
+    opacity: 0; transition: opacity .14s ease;
+  }
+  #action.on { opacity: 1; }
+
+  #won {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; text-align: center;
+    background: rgba(4, 4, 2, .9);
+    opacity: 0; pointer-events: none; transition: opacity .8s ease;
+  }
+  #won.on { opacity: 1; }
+  #won h2 {
+    margin: 0; font-size: 16px; letter-spacing: .34em;
+    text-transform: uppercase; color: #d6c77a; font-weight: 600;
+  }
+  #won p { margin: 0; font-size: 12px; color: #7d7862; max-width: 380px; line-height: 1.8; }
+
+  #readout {
+    position: absolute; top: 96px; left: 10px;
+    padding: 8px 10px;
+    background: rgba(8, 8, 4, .62);
+    border: 1px solid rgba(214, 199, 122, .14);
+    border-radius: 4px;
+    white-space: pre;
+    font-size: 11px;
+    color: #8f8a70;
+  }
+  #readout b { color: #d6c77a; font-weight: 600; }
+  #readout .bad { color: #e07a5f; }
+
+  #prompt {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 18px;
+    background: rgba(6, 6, 3, .82);
+    pointer-events: auto; cursor: pointer;
+    text-align: center;
+    padding: 24px;
+  }
+  #prompt.hidden { display: none; }
+  #prompt h1 {
+    margin: 0; font-size: 15px; font-weight: 600;
+    letter-spacing: .34em; text-transform: uppercase; color: #d6c77a;
+  }
+  #prompt blockquote {
+    margin: 0; max-width: 460px;
+    font-size: 12px; line-height: 1.85; color: #7d7862; font-style: italic;
+  }
+  #prompt .go { font-size: 12px; letter-spacing: .2em; color: #b9b394; text-transform: uppercase; }
+  #prompt .keys { font-size: 11px; color: #5e5a49; }
+  kbd {
+    background: rgba(214, 199, 122, .1);
+    border: 1px solid rgba(214, 199, 122, .2);
+    border-radius: 3px; padding: 1px 5px; font: inherit; color: #b9b394;
+  }
+
+  #flash {
+    position: absolute; inset: 0; background: #fff;
+    opacity: 0; pointer-events: none;
+  }
+
+  #blackout {
+    position: absolute; inset: 0; background: #000;
+    opacity: 0; transition: opacity .4s ease;
+  }
+  #blackout.on { opacity: 1; transition-duration: .18s; }
+
+  #caught {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; letter-spacing: .3em; text-transform: uppercase;
+    color: #6e6752; opacity: 0; transition: opacity .3s ease;
+  }
+  #caught.on { opacity: 1; }
+
+  #unsupported {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    background: #0a0a06; text-align: center; padding: 28px;
+    pointer-events: auto;
+  }
+  #unsupported.on { display: flex; }
+  #unsupported h2 {
+    margin: 0; font-size: 14px; letter-spacing: .3em;
+    text-transform: uppercase; color: #d6c77a; font-weight: 600;
+  }
+  #unsupported p { margin: 0; max-width: 430px; font-size: 12px; line-height: 1.85; color: #8a8470; }
+  #unsupported a { color: #a79f80; }
+  #unsupported .minor { font-size: 11px; color: #5e5a49; }
+
+  #vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,.55) 100%);
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="vignette"></div>
+  <div id="unsupported">
+    <h2 id="unsupported-title"></h2>
+    <p id="unsupported-body"></p>
+    <p class="minor" id="unsupported-minor"></p>
+  </div>
+  <div id="flash"></div>
+  <div id="blackout"></div>
+  <div id="caught">te encontro</div>
+  <div id="objective"></div>
+  <div id="action"></div>
+  <div id="readout"></div>
+  <div id="won">
+    <h2>Saliste</h2>
+    <p>La puerta da a una escalera de servicio. No mires atr&aacute;s.</p>
+    <p style="color:#5e5a49">F5 para volver a entrar</p>
+  </div>
+  <div id="prompt">
+    <h1>The Backrooms</h1>
+    <blockquote>
+      &ldquo;&hellip;nothing but the stink of old moist carpet, the madness of mono-yellow,
+      the endless background noise of fluorescent lights at maximum hum-buzz&hellip;&rdquo;
+    </blockquote>
+    <div class="go">Click para entrar</div>
+    <div class="keys">
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> caminar &nbsp;·&nbsp;
+      <kbd>Shift</kbd> apurarse &nbsp;·&nbsp; <kbd>Esc</kbd> salir
+    </div>
+  </div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
