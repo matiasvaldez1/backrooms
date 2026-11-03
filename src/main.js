@@ -179,6 +179,7 @@ async function boot() {
 	function getCaught() {
 
 		caughtFor = 2.4;
+		hud.setDying( true );
 
 		// La pila completa de la fila "Explosion": nada de esto solo alcanza.
 		feedback.hitstop( 90, 0.05 );
@@ -270,6 +271,7 @@ async function boot() {
 	player.controls.addEventListener( 'lock', () => {
 
 		entered = true;
+		hud.setEntered( true );
 		hud.setPromptVisible( false );
 
 	} );
@@ -290,6 +292,7 @@ async function boot() {
 		langButton.textContent = getLanguage().toUpperCase();
 		document.getElementById( 'prompt-go' ).textContent =
 			t( entered ? 'pause.resume' : 'start.enter' );
+		hud.setEntered( entered );
 
 	};
 
@@ -389,6 +392,7 @@ async function boot() {
 				relocated = false;
 				blackout.classList.remove( 'on' );
 				caughtLabel.classList.remove( 'on' );
+				hud.setDying( false );
 
 			}
 

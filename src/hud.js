@@ -20,7 +20,10 @@ export class Hud {
 		this.action = document.getElementById( 'action' );
 		this.readout = document.getElementById( 'readout' );
 		this.prompt = document.getElementById( 'prompt' );
+		this.promptTitle = document.getElementById( 'prompt-title' );
 		this.won = document.getElementById( 'won' );
+		this.root = document.getElementById( 'hud' );
+		this.ended = false;
 
 		if ( ! debug ) this.readout.style.display = 'none';
 
@@ -42,13 +45,33 @@ export class Hud {
 
 	setPromptVisible( visible ) {
 
-		this.prompt.classList.toggle( 'hidden', ! visible );
+		// Ganada la partida no hay nada que reanudar: la pausa encima de la
+		// pantalla de victoria eran dos finales a la vez.
+		this.prompt.classList.toggle( 'hidden', ! visible || this.ended );
+
+	}
+
+	/** Entrado el juego, la pausa cambia de titulo y se guarda la cita. */
+	setEntered( entered ) {
+
+		this.root.classList.toggle( 'entered', entered );
+		this.promptTitle.textContent = entered ? t( 'pause.title' ) : 'The Backrooms';
 
 	}
 
 	setWon( won ) {
 
+		this.ended = won;
 		this.won.classList.toggle( 'on', won );
+		this.root.classList.toggle( 'ended', won );
+		if ( won ) this.prompt.classList.add( 'hidden' );
+
+	}
+
+	/** Durante el negro de la muerte, el HUD de juego estorba. */
+	setDying( dying ) {
+
+		this.root.classList.toggle( 'dying', dying );
 
 	}
 

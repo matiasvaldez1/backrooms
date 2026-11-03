@@ -8,10 +8,54 @@
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0a06; }
-  body { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: #b9b394; }
+  /* Grotesca de sistema para la interfaz. El Backrooms es un edificio de
+     oficinas y una sans neutra lee institucional; el monospace en TODO, titulo
+     incluido, hacia que el juego pareciera una herramienta de desarrollo.
+     Stack del sistema: cero requests, cero FOUT sobre la pantalla de carga.
+     El monospace sobrevive solo donde corresponde: el readout y las teclas. */
+  body {
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+    color: #b9b394;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .mono, #readout, kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
   canvas { display: block; }
 
   #hud { position: fixed; inset: 0; pointer-events: none; }
+
+  /* Orden de apilado explicito. Estaban todos en z-index auto, asi que el orden
+     lo decidia el DOM: #won venia antes que #prompt y la pausa tapaba la
+     pantalla de victoria, con los textos encimados. */
+  #vignette    { z-index: 1; }
+  #objective,
+  #action,
+  #readout     { z-index: 10; }
+  #caught      { z-index: 20; }
+  #blackout    { z-index: 30; }
+  #flash       { z-index: 40; }
+  #prompt      { z-index: 50; }
+  #won         { z-index: 60; }
+  #unsupported { z-index: 70; }
+  #loading     { z-index: 80; }
+
+  /* En un estado terminal o durante la muerte, el HUD de juego estorba. */
+  #hud.ended #objective,
+  #hud.ended #action,
+  #hud.ended #readout,
+  #hud.dying #objective,
+  #hud.dying #action { display: none !important; }
+
+  /* Entrado el juego, la cita ya se leyo: en pausa es ruido. */
+  #hud.entered #prompt blockquote { display: none; }
+
+  /* Antes de entrar no hay partida: mostrar "tableros 0/4" y el panel tecnico
+     detras de la pantalla de inicio es ruido sobre la primera impresion. */
+  #hud:not(.entered) #objective,
+  #hud:not(.entered) #readout { display: none; }
 
   #objective {
     position: absolute; top: 10px; left: 10px;
@@ -44,12 +88,13 @@
   }
   #won.on { opacity: 1; }
   #won h2 {
-    margin: 0; font-size: 16px; letter-spacing: .34em;
-    text-transform: uppercase; color: #d6c77a; font-weight: 600;
+    margin: 0; font-size: 15px; letter-spacing: .46em;
+    text-transform: uppercase; color: #d6c77a; font-weight: 500;
   }
   #won p { margin: 0; font-size: 12px; color: #7d7862; max-width: 380px; line-height: 1.8; }
 
   #readout {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     position: absolute; top: 96px; left: 10px;
     padding: 8px 10px;
     background: rgba(8, 8, 4, .62);
@@ -72,8 +117,8 @@
   }
   #loading.done { display: none; }
   #loading h1 {
-    margin: 0; font-size: 15px; font-weight: 600;
-    letter-spacing: .34em; text-transform: uppercase; color: #d6c77a;
+    margin: 0; font-size: 14px; font-weight: 500;
+    letter-spacing: .46em; text-transform: uppercase; color: #d6c77a;
   }
   #loading-bar { width: 200px; height: 2px; background: rgba(214,199,122,.14); overflow: hidden; }
   #loading-fill { height: 100%; width: 8%; background: #d6c77a; transition: width .35s ease; }
@@ -104,19 +149,23 @@
   }
   #prompt.hidden { display: none; }
   #prompt h1 {
-    margin: 0; font-size: 15px; font-weight: 600;
-    letter-spacing: .34em; text-transform: uppercase; color: #d6c77a;
+    margin: 0; font-size: 14px; font-weight: 500;
+    letter-spacing: .46em; text-transform: uppercase; color: #d6c77a;
   }
   #prompt blockquote {
     margin: 0; max-width: 460px;
     font-size: 12px; line-height: 1.85; color: #7d7862; font-style: italic;
   }
-  #prompt .go { font-size: 12px; letter-spacing: .2em; color: #b9b394; text-transform: uppercase; }
+  #prompt .go { font-size: 12px; letter-spacing: .26em; color: #b9b394; text-transform: uppercase; }
   #prompt .keys { font-size: 11px; color: #5e5a49; }
   kbd {
     background: rgba(214, 199, 122, .1);
     border: 1px solid rgba(214, 199, 122, .2);
-    border-radius: 3px; padding: 1px 5px; font: inherit; color: #b9b394;
+    border-radius: 3px; padding: 1px 5px; color: #b9b394;
+    /* Sin `font: inherit`: el shorthand reseteaba la familia y, por venir
+       despues, le ganaba a la regla mono de arriba. */
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 
   #flash {
@@ -133,7 +182,7 @@
   #caught {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; letter-spacing: .3em; text-transform: uppercase;
+    font-size: 13px; letter-spacing: .42em; text-transform: uppercase;
     color: #6e6752; opacity: 0; transition: opacity .3s ease;
   }
   #caught.on { opacity: 1; }
@@ -147,8 +196,8 @@
   }
   #unsupported.on { display: flex; }
   #unsupported h2 {
-    margin: 0; font-size: 14px; letter-spacing: .3em;
-    text-transform: uppercase; color: #d6c77a; font-weight: 600;
+    margin: 0; font-size: 14px; letter-spacing: .42em;
+    text-transform: uppercase; color: #d6c77a; font-weight: 500;
   }
   #unsupported p { margin: 0; max-width: 430px; font-size: 12px; line-height: 1.85; color: #8a8470; }
   #unsupported a { color: #a79f80; }
