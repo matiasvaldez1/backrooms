@@ -36,7 +36,7 @@ export async function bakeGI( renderer, scene, level, lighting, flashlight, opti
 
 	// --- 1. UVs de lightmap --------------------------------------------------
 
-	onStep( 'desplegando UVs' );
+	onStep( 'uvs' );
 	await nextFrame();
 
 	const previousGeometries = level.bakeable.map( mesh => mesh.geometry );
@@ -73,7 +73,7 @@ export async function bakeGI( renderer, scene, level, lighting, flashlight, opti
 
 	// --- 2. Grilla de probes -------------------------------------------------
 
-	onStep( 'capturando probes' );
+	onStep( 'probes' );
 	await nextFrame();
 
 	const { size, wallHeight } = level.dims;
@@ -88,7 +88,7 @@ export async function bakeGI( renderer, scene, level, lighting, flashlight, opti
 
 	// --- 3. Lightmap ---------------------------------------------------------
 
-	onStep( 'horneando lightmap' );
+	onStep( 'lightmap' );
 	await nextFrame();
 
 	// Los tubos fijos entran como luz directa; la grilla aporta el rebote.

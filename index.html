@@ -62,6 +62,36 @@
   #readout b { color: #d6c77a; font-weight: 600; }
   #readout .bad { color: #e07a5f; }
 
+  /* Visible desde el primer pintado, sin esperar a que baje ni corra el bundle.
+     Si dependiera del JS, los primeros cientos de ms serian una pantalla negra. */
+  #loading {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px;
+    background: #0a0a06; pointer-events: auto;
+  }
+  #loading.done { display: none; }
+  #loading h1 {
+    margin: 0; font-size: 15px; font-weight: 600;
+    letter-spacing: .34em; text-transform: uppercase; color: #d6c77a;
+  }
+  #loading-bar { width: 200px; height: 2px; background: rgba(214,199,122,.14); overflow: hidden; }
+  #loading-fill { height: 100%; width: 8%; background: #d6c77a; transition: width .35s ease; }
+  #loading-status { font-size: 11px; letter-spacing: .16em; color: #5e5a49; min-height: 1em; }
+
+  #pause-controls {
+    display: flex; gap: 22px; align-items: center;
+    margin-top: 4px; font-size: 11px; color: #5e5a49;
+  }
+  #pause-controls button {
+    font: inherit; cursor: pointer;
+    background: rgba(214, 199, 122, .08);
+    border: 1px solid rgba(214, 199, 122, .22);
+    border-radius: 3px; padding: 3px 9px; margin-left: 7px;
+    color: #b9b394;
+  }
+  #pause-controls button:hover { background: rgba(214, 199, 122, .18); color: #e4d7a0; }
+
   #prompt {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
@@ -131,6 +161,11 @@
 </style>
 </head>
 <body>
+<div id="loading">
+  <h1>The Backrooms</h1>
+  <div id="loading-bar"><div id="loading-fill"></div></div>
+  <div id="loading-status">loading</div>
+</div>
 <div id="hud">
   <div id="vignette"></div>
   <div id="unsupported">
@@ -140,25 +175,32 @@
   </div>
   <div id="flash"></div>
   <div id="blackout"></div>
-  <div id="caught">te encontro</div>
+  <div id="caught" data-i18n="caught"></div>
   <div id="objective"></div>
   <div id="action"></div>
   <div id="readout"></div>
   <div id="won">
-    <h2>Saliste</h2>
-    <p>La puerta da a una escalera de servicio. No mires atr&aacute;s.</p>
-    <p style="color:#5e5a49">F5 para volver a entrar</p>
+    <h2 data-i18n="won.title"></h2>
+    <p data-i18n="won.body"></p>
+    <p style="color:#5e5a49" data-i18n="won.again"></p>
   </div>
   <div id="prompt">
-    <h1>The Backrooms</h1>
+    <h1 id="prompt-title">The Backrooms</h1>
     <blockquote>
       &ldquo;&hellip;nothing but the stink of old moist carpet, the madness of mono-yellow,
       the endless background noise of fluorescent lights at maximum hum-buzz&hellip;&rdquo;
     </blockquote>
-    <div class="go">Click para entrar</div>
+    <div class="go" id="prompt-go" data-i18n="start.enter"></div>
     <div class="keys">
-      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> caminar &nbsp;·&nbsp;
-      <kbd>Shift</kbd> apurarse &nbsp;·&nbsp; <kbd>Esc</kbd> salir
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span data-i18n="start.walk"></span> &nbsp;·&nbsp;
+      <kbd>Shift</kbd> <span data-i18n="start.run"></span> &nbsp;·&nbsp;
+      <kbd>E</kbd> <span data-i18n="start.interact"></span> &nbsp;·&nbsp;
+      <kbd>F</kbd> <span data-i18n="start.flashlight"></span> &nbsp;·&nbsp;
+      <kbd>Esc</kbd> <span data-i18n="start.exit"></span>
+    </div>
+    <div id="pause-controls">
+      <span><span data-i18n="pause.sound"></span><button id="toggle-sound" type="button"></button></span>
+      <span><span data-i18n="pause.language"></span><button id="toggle-lang" type="button"></button></span>
     </div>
   </div>
 </div>

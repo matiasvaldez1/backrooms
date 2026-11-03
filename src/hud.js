@@ -8,6 +8,8 @@
  * build jugable es el anti-patron "debug UI shipped as player UI" — y ademas el
  * fallback silencioso de WebGPU a WebGL2 solo le importa a quien desarrolla.
  */
+import { t } from './i18n.js';
+
 export class Hud {
 
 	constructor( debug ) {
@@ -60,20 +62,18 @@ export class Hud {
 
 		}
 
-		this.action.textContent = focus.kind === 'exit'
-			? 'E — salir'
-			: 'E — levantar el tablero';
+		this.action.textContent = t( focus.kind === 'exit' ? 'hud.useExit' : 'hud.useBreaker' );
 		this.action.classList.add( 'on' );
 
 	}
 
 	setObjective( mission ) {
 
-		const lines = [ `tableros <b>${ mission.done }/${ mission.total }</b>` ];
+		const lines = [ `${ t( 'hud.breakers' ) } <b>${ mission.done }/${ mission.total }</b>` ];
 
 		lines.push( mission.allUp
-			? 'la salida <span class="ready">cedió</span>'
-			: 'la salida no cede' );
+			? `<span class="ready">${ t( 'hud.exitOpen' ) }</span>`
+			: t( 'hud.exitSealed' ) );
 
 		this.objective.innerHTML = lines.join( '<br>' );
 

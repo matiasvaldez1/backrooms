@@ -19,6 +19,11 @@ export class AudioEngine {
 		this.ready = false;
 		this.noiseBuffer = null;
 
+		// Se lee antes de que exista el AudioContext: si el usuario lo dejo en
+		// silencio, no tiene que oir un zumbido al volver.
+		this.muted = false;
+		try { this.muted = localStorage.getItem( 'backrooms.muted' ) === '1'; } catch ( e ) { /* sin persistencia */ }
+
 		this._lastStep = 0;
 
 		const unlock = () => {
@@ -47,7 +52,7 @@ export class AudioEngine {
 		await this.ctx.resume();
 
 		this.master = this.ctx.createGain();
-		this.master.gain.value = 0.9;
+		this.master.gain.value = this.muted ? 0 : 0.9;
 		this.master.connect( this.ctx.destination );
 
 		// Zumbido y retumbe pasan por acá para poder agacharlos juntos en el
@@ -160,10 +165,27 @@ export class AudioEngine {
 
 	}
 
+	/** @param {boolean} muted @returns {boolean} el estado resultante */
+	setMuted( muted ) {
+
+		this.muted = muted;
+
+		try { localStorage.setItem( 'backrooms.muted', muted ? '1' : '0' ); } catch ( e ) { /* sin persistencia */ }
+
+		if ( this.ready ) {
+
+			this.master.gain.setTargetAtTime( muted ? 0 : 0.9, this.ctx.currentTime, 0.02 );
+
+		}
+
+		return this.muted;
+
+	}
+
 	/** @param {number} value 1 normal, ~0.6 mientras dura un impacto */
 	setDuck( value ) {
 
-		if ( ! this.ready ) return;
+		if ( ! this.ready || this.muted ) return;
 		this.ambience.gain.setTargetAtTime( value, this.ctx.currentTime, 0.04 );
 
 	}

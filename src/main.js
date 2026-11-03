@@ -14,11 +14,24 @@ import { createMission } from './mission.js';
 import { bakeGI } from './bake.js';
 import { createPost } from './post.js';
 import { Hud } from './hud.js';
+import { t, applyStatic, getLanguage, setLanguage, languages } from './i18n.js';
 
 // Cada nivel aporta su generador, su paleta, su luz y su criatura. Cambiar de
 // nivel es cambiar este import, no tocar el resto del codigo.
 const DEFINITION = level0;
 const DEFAULT_SEED = 1987;
+
+const loadingEl = document.getElementById( 'loading' );
+const loadingFill = document.getElementById( 'loading-fill' );
+const loadingStatus = document.getElementById( 'loading-status' );
+
+/** @param {number} percent @param {string} key clave de i18n */
+function loading( percent, key ) {
+
+	loadingFill.style.width = percent + '%';
+	loadingStatus.textContent = t( key );
+
+}
 
 /**
  * Puerta de compatibilidad, antes de construir nada.
@@ -36,11 +49,12 @@ async function checkSupport( forced ) {
 	const body = document.getElementById( 'unsupported-body' );
 	const minor = document.getElementById( 'unsupported-minor' );
 
-	const show = ( t, b, m ) => {
+	const show = ( prefix ) => {
 
-		title.textContent = t;
-		body.innerHTML = b;
-		minor.innerHTML = m || '';
+		loadingEl.classList.add( 'done' );
+		title.textContent = t( prefix + '.title' );
+		body.innerHTML = t( prefix + '.body' );
+		minor.innerHTML = t( prefix + '.minor' );
 		panel.classList.add( 'on' );
 		document.getElementById( 'prompt' ).classList.add( 'hidden' );
 		// Las cajas vacias del HUD quedarian flotando sobre el aviso.
@@ -56,9 +70,7 @@ async function checkSupport( forced ) {
 	// hay controles de pantalla. Mejor decirlo que dejar a alguien tocando la nada.
 	if ( ! window.matchMedia( '(pointer: fine)' ).matches ) {
 
-		show( 'Hace falta teclado y mouse',
-			'Esto se camina con WASD y se mira con el mouse. En pantalla táctil no hay forma de jugarlo.',
-			'Abrilo desde una computadora.' );
+		show( 'unsupported.pointer' );
 		return false;
 
 	}
@@ -70,9 +82,7 @@ async function checkSupport( forced ) {
 
 	if ( adapter === null ) {
 
-		show( 'Hace falta WebGPU',
-			'Este navegador no expone WebGPU. Funciona en Chrome, Edge y Safari recientes.',
-			'Igual podés <a href="?webgl">entrar en modo WebGL2</a>, pero va a ir a pocos cuadros por segundo.' );
+		show( 'unsupported.gpu' );
 		return false;
 
 	}
@@ -86,6 +96,9 @@ async function boot() {
 	// ?webgl fuerza el fallback a WebGL2, que es lo que va a ver cualquiera sin
 	// WebGPU. Hay que poder probar ESE camino, no solo el feliz.
 	const forceWebGL = new URLSearchParams( location.search ).has( 'webgl' );
+
+	applyStatic();
+	loading( 10, 'loading.boot' );
 
 	if ( ! await checkSupport( forceWebGL ) ) return;
 
@@ -120,6 +133,8 @@ async function boot() {
 	// los hooks de verificacion dependen de el.
 	const seed = Number( params.get( 'seed' ) ) || DEFAULT_SEED;
 	const rand = createRng( seed );
+
+	loading( 30, 'loading.level' );
 
 	const materials = createMaterials( DEFINITION.palette );
 	const level = buildLevel( DEFINITION, rand, materials );
@@ -198,14 +213,19 @@ async function boot() {
 
 	if ( ! new URLSearchParams( location.search ).has( 'nobake' ) ) {
 
-		const label = document.getElementById( 'caught' );
-		label.textContent = 'horneando luz\u2026';
-		label.classList.add( 'on' );
+		// El bake avisa por donde va: son ~300ms de trabajo sincronico en GPU y
+		// sin feedback la pantalla parece colgada.
+		const steps = { uvs: [ 50, 'loading.uvs' ], probes: [ 70, 'loading.probes' ], lightmap: [ 90, 'loading.lightmap' ] };
 
 		try {
 
 			bakeReport = await bakeGI( renderer, scene, level, lighting, flashlight, {
-				onStep: step => { label.textContent = step + '\u2026'; }
+				onStep: step => {
+
+					const entry = steps[ step ];
+					if ( entry ) loading( entry[ 0 ], entry[ 1 ] );
+
+				}
 			} );
 
 		} catch ( error ) {
@@ -214,9 +234,6 @@ async function boot() {
 			console.error( '[backrooms] el bake fallo, se sigue con ambient plano', error );
 
 		}
-
-		label.classList.remove( 'on' );
-		label.textContent = 'te encontro';
 
 		// Con GI horneada el relleno plano sobra: estaria sumando al rebote real.
 		if ( bakeReport.ok ) {
@@ -248,8 +265,54 @@ async function boot() {
 	hud.backend = renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl2';
 	hud.bindPrompt( () => player.lock() );
 
-	player.controls.addEventListener( 'lock', () => hud.setPromptVisible( false ) );
+	let entered = false;
+
+	player.controls.addEventListener( 'lock', () => {
+
+		entered = true;
+		hud.setPromptVisible( false );
+
+	} );
+
 	player.controls.addEventListener( 'unlock', () => hud.setPromptVisible( true ) );
+
+	// --- controles de la pausa ---------------------------------------------
+	//
+	// Viven dentro del overlay que al hacerle click engancha el pointer lock,
+	// asi que cada boton corta la propagacion o apretar "sonido" te meteria
+	// al juego de paso.
+	const soundButton = document.getElementById( 'toggle-sound' );
+	const langButton = document.getElementById( 'toggle-lang' );
+
+	const refreshControls = () => {
+
+		soundButton.textContent = t( audio.muted ? 'pause.off' : 'pause.on' );
+		langButton.textContent = getLanguage().toUpperCase();
+		document.getElementById( 'prompt-go' ).textContent =
+			t( entered ? 'pause.resume' : 'start.enter' );
+
+	};
+
+	soundButton.addEventListener( 'click', event => {
+
+		event.stopPropagation();
+		audio.setMuted( ! audio.muted );
+		refreshControls();
+
+	} );
+
+	langButton.addEventListener( 'click', event => {
+
+		event.stopPropagation();
+		const next = languages[ ( languages.indexOf( getLanguage() ) + 1 ) % languages.length ];
+		setLanguage( next );
+		refreshControls();
+		hud.setObjective( mission );
+
+	} );
+
+	refreshControls();
+	player.controls.addEventListener( 'unlock', refreshControls );
 
 	window.addEventListener( 'keydown', event => {
 
@@ -373,6 +436,9 @@ async function boot() {
 		hud.update( realDelta, renderer.info, player.position, level, seed );
 
 	}
+
+	loading( 100, 'loading.ready' );
+	loadingEl.classList.add( 'done' );
 
 	// setAnimationLoop y no requestAnimationFrame: bajo WebGPU tambien espera el init.
 	renderer.setAnimationLoop( frame );
