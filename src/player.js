@@ -21,6 +21,19 @@ const SWAY_AMP = 0.022;
 const UP = new THREE.Vector3( 0, 1, 0 );
 
 /**
+ * Margen contra los polos, en radianes (~3.4 grados).
+ *
+ * PointerLockControls descompone el quaternion en orden YXZ. Exactamente en
+ * ±90 grados de pitch esa descomposicion degenera —el eje Y y el Z se alinean—
+ * y el roll que escribimos para el balanceo se filtra al YAW: medido, 0.02 rad
+ * por frame, o sea la camara girando sola mientras mirabas al piso.
+ *
+ * Su default es 0 / PI, que permite llegar justo a la vertical. Con este margen
+ * la descomposicion se mantiene bien condicionada.
+ */
+const POLE_MARGIN = 0.06;
+
+/**
  * Circulo contra las celdas solidas que toca su AABB.
  * Se chequea por eje separado en update(), que es lo que produce el resbale
  * contra la pared en vez de frenar en seco al rozarla.
@@ -69,6 +82,8 @@ export class Player {
 		// Pasarle domElement ya conecta los listeners: no llamar connect() tambien.
 		this.controls = new PointerLockControls( camera, domElement );
 		this.controls.pointerSpeed = 0.9;
+		this.controls.minPolarAngle = POLE_MARGIN;
+		this.controls.maxPolarAngle = Math.PI - POLE_MARGIN;
 
 		// La posicion del jugador es SUYA, no la de la camara. La camara se compone
 		// al final sumando cabeceo y sacudon: si el shake viviera en camera.position,
@@ -258,14 +273,19 @@ export class Player {
 		camera.position.copy( this.position );
 		camera.position.y += Math.sin( elapsed * BOB_FREQ ) * BOB_AMP * gait;
 
-		const sway = Math.sin( elapsed * SWAY_FREQ ) * SWAY_AMP * gait;
+		// El roll se desvanece al acercarse a la vertical. El clamp de arriba ya
+		// evita la degeneracion, pero esto hace que el error tienda a cero en vez
+		// de depender solo del margen — y de paso, inclinar la cabeza mirando al
+		// piso se ve raro.
+		const upright = Math.cos( camera.rotation.x );
+		const sway = Math.sin( elapsed * SWAY_FREQ ) * SWAY_AMP * gait * upright;
 
 		if ( this.feedback !== null ) {
 
 			camera.position.add( this.feedback.shakeOffset );
 			// El roll sobrevive: PointerLockControls lee el euler en YXZ, toca
 			// solo .y y .x, y reescribe los tres.
-			camera.rotation.z = sway + this.feedback.roll;
+			camera.rotation.z = sway + this.feedback.roll * upright;
 
 		} else {
 
